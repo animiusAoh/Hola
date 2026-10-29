@@ -7,12 +7,13 @@ local player = Players.LocalPlayer
 local events = ReplicatedStorage:WaitForChild("Events")
 local punchRemote = events:WaitForChild("Punch")
 
+-- Delays exactos para cada combo (1 al 5)
 local hitDelays = {
-    3.19, -- combo 1
-    4.00, -- combo 2
-    3.24, -- combo 3
-    4.00, -- combo 4
-    4.25  -- combo 5
+    [1] = 3.19,
+    [2] = 4.00,
+    [3] = 3.24,
+    [4] = 4.00,
+    [5] = 4.25
 }
 
 local lastPunch = 0
@@ -25,35 +26,43 @@ local function doPunch(isCharged)
     
     if isPunching then return end
     
+    -- Reiniciar combo si ha pasado más de 1.5 segundos sin golpear
     if now - lastComboTime > 1.5 then
         combo = 0
     end
     
-    local currentDelay = hitDelays[combo + 1] or 0.22
+    -- Determinar el índice del Siguiente golpe
+    local nextCombo = combo + 1
+    if nextCombo > 5 then
+        nextCombo = 1
+    end
     
+    local currentDelay = hitDelays[nextCombo] or 0.22
+    
+    -- Comprobar Cooldown del golpe actual
     if now - lastPunch < currentDelay then
         return
     end
     
+    -- Actualizar variables de control
     isPunching = true
     lastPunch = now
     lastComboTime = now
-    
-    combo = combo + 1
-    if combo > 5 then
-        combo = 1
-    end
+    combo = nextCombo
     
     local v4 = isCharged and 0.35 or 0
-    local v5 = hitDelays[combo]
+    local v5 = currentDelay
     
+    -- Enviar evento al servidor
     punchRemote:FireServer(v4, v5, combo)
     
-    task.delay(currentDelay * 0.9, function()
+    -- Desbloquear el estado de golpe justo cuando termina el tiempo estipulado
+    task.delay(currentDelay, function()
         isPunching = false
     end)
 end
 
+-- Entrada para Ratón (Golpe Normal)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -61,6 +70,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+-- Entrada para Mando / Gamepad (Golpe Cargado)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.Gamepad1 and input.KeyCode == Enum.KeyCode.ButtonX then
@@ -68,6 +78,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+-- Sistema Antigrab / Anti-agarre
 local function setup(character)
     local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
     local humanoid = character:WaitForChild("Humanoid", 5)
@@ -84,20 +95,21 @@ local function setup(character)
             humanoidRootPart:FindFirstChildWhichIsA("BodyMover") or
             humanoidRootPart:FindFirstChildWhichIsA("AlignOrientation")
 
-        if isGrabbed and math.random() < 0.7 then
+        if isGrabbed and math.random() < 0.8 then
             humanoid.PlatformStand = false
-            if humanoid:GetState() == Enum.HumanoidStateType.Physics or 
-               humanoid:GetState() == Enum.HumanoidStateType.Ragdoll then
+            local currentState = humanoid:GetState()
+            if currentState == Enum.HumanoidStateType.Physics or currentState == Enum.HumanoidStateType.Ragdoll then
                 humanoid:ChangeState(Enum.HumanoidStateType.Running)
             end
         end
     end)
 end
 
+-- Inicialización de Character y Respawn
 if player.Character then
     setup(player.Character)
 end
 
 player.CharacterAdded:Connect(setup)
 
-print("Working")
+print("Script optimizado cargado con éxito.")
