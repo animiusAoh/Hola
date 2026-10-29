@@ -7,7 +7,6 @@ local player = Players.LocalPlayer
 local events = ReplicatedStorage:WaitForChild("Events")
 local punchRemote = events:WaitForChild("Punch")
 
--- Delays exactos para cada combo (1 al 5)
 local hitDelays = {
     [1] = 3.19,
     [2] = 4.00,
@@ -26,12 +25,10 @@ local function doPunch(isCharged)
     
     if isPunching then return end
     
-    -- Reiniciar combo si ha pasado más de 1.5 segundos sin golpear
     if now - lastComboTime > 1.5 then
         combo = 0
     end
     
-    -- Determinar el índice del Siguiente golpe
     local nextCombo = combo + 1
     if nextCombo > 5 then
         nextCombo = 1
@@ -39,12 +36,10 @@ local function doPunch(isCharged)
     
     local currentDelay = hitDelays[nextCombo] or 0.22
     
-    -- Comprobar Cooldown del golpe actual
     if now - lastPunch < currentDelay then
         return
     end
     
-    -- Actualizar variables de control
     isPunching = true
     lastPunch = now
     lastComboTime = now
@@ -53,16 +48,13 @@ local function doPunch(isCharged)
     local v4 = isCharged and 0.35 or 0
     local v5 = currentDelay
     
-    -- Enviar evento al servidor
     punchRemote:FireServer(v4, v5, combo)
     
-    -- Desbloquear el estado de golpe justo cuando termina el tiempo estipulado
     task.delay(currentDelay, function()
         isPunching = false
     end)
 end
 
--- Entrada para Ratón (Golpe Normal)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -70,7 +62,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Entrada para Mando / Gamepad (Golpe Cargado)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.Gamepad1 and input.KeyCode == Enum.KeyCode.ButtonX then
@@ -78,7 +69,17 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Sistema Antigrab / Anti-agarre
+local function isHoldingSomeone(character)
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("AlignPosition") or obj:IsA("VectorForce") or obj:IsA("Attachment") then
+            if obj.Parent and obj.Parent:IsDescendantOf(character) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function setup(character)
     local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
     local humanoid = character:WaitForChild("Humanoid", 5)
@@ -87,6 +88,10 @@ local function setup(character)
 
     RunService.Heartbeat:Connect(function()
         if not character or not character:IsDescendantOf(workspace) then return end
+        
+        if isHoldingSomeone(character) then
+            return
+        end
         
         local isGrabbed =
             humanoidRootPart:FindFirstChildWhichIsA("AlignPosition") or
@@ -105,11 +110,5 @@ local function setup(character)
     end)
 end
 
--- Inicialización de Character y Respawn
-if player.Character then
-    setup(player.Character)
-end
-
-player.CharacterAdded:Connect(setup)
-
-print("Script optimizado cargado con éxito.")
+setup(character)
+Players.LocalPlayer.CharacterAdded:Connect(setup)
