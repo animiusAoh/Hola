@@ -20,7 +20,23 @@ local combo = 0
 local lastComboTime = 0
 local isPunching = false
 
+local scriptEnabled = false
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Z then
+        scriptEnabled = not scriptEnabled
+        if scriptEnabled then
+            print("Script Activado")
+        else
+            print("Script Desactivado")
+        end
+    end
+end)
+
 local function doPunch(isCharged)
+    if not scriptEnabled then return end
+    
     local now = tick()
     
     if isPunching then return end
@@ -87,6 +103,7 @@ local function setup(character)
     if not humanoidRootPart or not humanoid then return end
 
     RunService.Heartbeat:Connect(function()
+        if not scriptEnabled then return end
         if not character or not character:IsDescendantOf(workspace) then return end
         
         if isHoldingSomeone(character) then
@@ -110,5 +127,8 @@ local function setup(character)
     end)
 end
 
-setup(character)
+if player.Character then
+    setup(player.Character)
+end
+
 Players.LocalPlayer.CharacterAdded:Connect(setup)
